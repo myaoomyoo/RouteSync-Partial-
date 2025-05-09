@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Create Account | RouteSync</title>
+  <link rel="stylesheet" href="/style.css"/> <!-- Corrected path -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-box">
+      <h2>Create Your Account</h2>
+      <form action="/signup" method="POST" class="auth-form">
+        <input type="text" name="name" placeholder="Full Name" required />
+        <input type="email" name="email" placeholder="Email" required />
+        <input type="password" name="password" placeholder="Password" required />
+
+        <!-- Add role selection -->
+        <select name="role" required>
+          <option value="student">Student</option>
+          <option value="driver">Driver</option>
+          <option value="operator">Operator</option>
+        </select>
+
+        <button type="submit" class="btn primary full-width">Sign Up</button>
+      </form>
+
+      <div class="divider">or</div>
+
+      <div class="social-logins">
+        <button class="btn social google full-width">Sign up with Google</button>
+        <button class="btn social facebook full-width">Sign up with Facebook</button>
+      </div>
+
+      <p class="login-link">Already have an account? <a href="/login">Log in</a></p> <!-- Corrected link -->
+    </div>
+  </div>
+</body>
+</html>

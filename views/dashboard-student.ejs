@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Dashboard - RouteSync</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <aside class="sidebar">
+      <div class="profile">
+        <div class="avatar"></div>
+        <h2><%= user.name %></h2>
+        <p><%= user.email %></p>
+      </div>
+      <nav>
+        <a href="#" class="active">Dashboard</a>
+        <a href="#">Trips</a>
+        <a href="#">Payments</a>
+        <a href="/logout" class="logout-link">Logout</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <h1>Welcome, <%= user.name %>!</h1>
+
+      <div class="cards">
+        <div class="card">
+          <h3>Travel History (Past 7 days)</h3>
+          <canvas id="historyChart"></canvas>
+        </div>
+        <div class="card">
+          <h3>Attendance Stats</h3>
+          <canvas id="attendancePie"></canvas>
+        </div>
+      </div>
+
+      <div class="card large">
+        <h3>Today's Trip Info</h3>
+        <p>Driver: <strong>Sunil Sharma</strong></p>
+        <p>Car: Hyundai i10</p>
+        <p>Pickup Time: 8:10 AM</p>
+        <p>Drop Time: 3:10 PM</p>
+        <p><a href="tel:+919911223344">📞 Call Driver</a></p>
+        <p>
+          Rate Driver:
+          ⭐⭐⭐⭐⭐
+        </p>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <h3>Fee Payment</h3>
+          <p>Status: <strong>Due</strong></p>
+          <p>Plan: <strong>6 Months</strong></p>
+          <button>Pay Now</button>
+        </div>
+        <div class="card">
+          <h3>Emergency Protocol</h3>
+          <button style="background-color:#d63031; color:white; padding: 0.5rem 1rem; border:none; border-radius:5px;">Send Emergency Report</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    fetch('/api/student/attendance')
+      .then(res => res.json())
+      .then(({ present, late, absent }) => {
+        new Chart(document.getElementById("attendancePie"), {
+          type: "pie",
+          data: {
+            labels: ["Present", "Late", "Absent"],
+            datasets: [{
+              data: [present, late, absent],
+              backgroundColor: ["#00b894", "#fdcb6e", "#d63031"]
+            }]
+          }
+        });
+      });
+  </script>
+  
+  
+  <script>
+    // Only ONE historyChart initialization, using real data
+    fetch('/api/student/travel-history')
+      .then(res => res.json())
+      .then(({ data }) => {
+        new Chart(document.getElementById("historyChart"), {
+          type: "line",
+          data: {
+            labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+            datasets: [{
+              label: "Trips",
+              data,
+              borderColor: "#6c5ce7",
+              backgroundColor: "rgba(108, 92, 231, 0.2)",
+              fill: true
+            }]
+          },
+          options: {
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+      });
+  </script>
+  
+
+</body>
+</html>

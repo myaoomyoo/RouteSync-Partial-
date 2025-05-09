@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Operator Dashboard - RouteSync</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <aside class="sidebar">
+      <div class="profile">
+        <div class="avatar"></div>
+        <h2><%= user.name %></h2>
+        <p><%= user.email %></p>
+      </div>
+      <nav>
+        <a href="#" class="active">Dashboard</a>
+        <a href="#">Student Data</a>
+        <a href="#">Driver Pool</a>
+        <a href="/logout" class="logout-link">Logout</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <h1>Student Analytics</h1>
+
+      <div class="cards">
+        <div class="card">
+          <h3>Attendance Overview</h3>
+          <canvas id="attendanceChart"></canvas>
+        </div>
+        <div class="card">
+          <h3>Late Arrivals</h3>
+          <canvas id="lateStudentChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card large">
+        <h3>Student List (Sortable)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Coming/Going</th>
+              <th>Time Slot</th>
+              <th>Location</th>
+              <th>Contact</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Sakshi Jain</td>
+              <td>Coming</td>
+              <td>8:00 AM</td>
+              <td>Malviya Nagar</td>
+              <td><a href="tel:+911234567890">📞</a></td>
+            </tr>
+            <tr>
+              <td>Aditya Singh</td>
+              <td>Going</td>
+              <td>2:30 PM</td>
+              <td>Vaishali Nagar</td>
+              <td><a href="tel:+919876543210">📞</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <h3>Driver Info</h3>
+          <p>Name: Rajeev Bhatia</p>
+          <p>Car: Swift Dzire</p>
+          <p>Capacity: 4</p>
+          <p>Health: ✅</p>
+          <p>Late Reports: 1</p>
+        </div>
+        <div class="card">
+          <h3>Pool Allocation</h3>
+          <p>Drag & Drop UI will go here (backend required)</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    new Chart(document.getElementById("attendanceChart"), {
+      type: "pie",
+      data: {
+        labels: ["Present", "Absent"],
+        datasets: [{
+          data: [85, 15],
+          backgroundColor: ["#00cec9", "#dfe6e9"]
+        }]
+      }
+    });
+
+    new Chart(document.getElementById("lateStudentChart"), {
+      type: "bar",
+      data: {
+        labels: ["Jan", "Feb", "Mar", "Apr"],
+        datasets: [{
+          label: "Late",
+          data: [3, 5, 2, 6],
+          backgroundColor: "#0984e3"
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: "#333" } },
+          y: { ticks: { color: "#333" } }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
