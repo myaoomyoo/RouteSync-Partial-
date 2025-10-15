@@ -54,6 +54,32 @@ app.get('/', (req, res) => {
 });
 
 // ---------- Server ---------- //
-app.listen(3001, () => {
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server);
+const User = require('./models/User');
+
+// Export io for use in other modules
+module.exports.io = io;
+
+io.on('connection', (socket) => {
+  const userId = socket.handshake.query.userId;
+  if (!userId) return socket.disconnect();
+
+  console.log(`User connected: ${userId}`);
+  socket.join(userId); // Join a room for this user
+
+  User.findByIdAndUpdate(userId, { isActive: true }, { new: true }).exec();
+  io.emit('user-status-change', { userId, isActive: true });
+
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${userId}`);
+    User.findByIdAndUpdate(userId, { isActive: false }, { new: true }).exec();
+    io.emit('user-status-change', { userId, isActive: false });
+  });
+});
+
+server.listen(3001, () => {
   console.log(`Server running on http://localhost:${3001}`);
 });

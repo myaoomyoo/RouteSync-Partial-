@@ -5,116 +5,237 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Operator Dashboard - RouteSync</title>
   <link rel="stylesheet" href="/style.css"/>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="container">
-    <aside class="sidebar">
-      <div class="profile">
-        <div class="avatar"></div>
-        <h2><%= user.name %></h2>
-        <p><%= user.email %></p>
+  <div class="app">
+    <header>
+      <h1>RouteSync — Operator Dashboard</h1>
+      <div style="font-size:13px;color:var(--muted)">Click a pool to see students. Drag & drop drivers to pools.</div>
+    </header>
+
+    <aside class="palette">
+      <h3>Active Drivers (Drag to Pools)</h3>
+      <div id="driverPalette"></div>
+
+      <h3 style="margin-top:20px;">All Users</h3>
+      <div id="userLists">
+        <h4>Students</h4>
+        <div id="studentListContainer" style="max-height: 200px; overflow-y: auto;"></div>
+        <h4>Drivers</h4>
+        <div id="driverListContainer" style="max-height: 200px; overflow-y: auto;"></div>
       </div>
-      <nav>
-        <a href="#" class="active">Dashboard</a>
-        <a href="#">Student Data</a>
-        <a href="#">Driver Pool</a>
-        <a href="/logout" class="logout-link">Logout</a>
-      </nav>
     </aside>
 
-    <main class="main-content">
-      <h1>Student Analytics</h1>
-
-      <div class="cards">
-        <div class="card">
-          <h3>Attendance Overview</h3>
-          <canvas id="attendanceChart"></canvas>
-        </div>
-        <div class="card">
-          <h3>Late Arrivals</h3>
-          <canvas id="lateStudentChart"></canvas>
-        </div>
-      </div>
-
-      <div class="card large">
-        <h3>Student List (Sortable)</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Coming/Going</th>
-              <th>Time Slot</th>
-              <th>Location</th>
-              <th>Contact</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Sakshi Jain</td>
-              <td>Coming</td>
-              <td>8:00 AM</td>
-              <td>Malviya Nagar</td>
-              <td><a href="tel:+911234567890">📞</a></td>
-            </tr>
-            <tr>
-              <td>Aditya Singh</td>
-              <td>Going</td>
-              <td>2:30 PM</td>
-              <td>Vaishali Nagar</td>
-              <td><a href="tel:+919876543210">📞</a></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="cards">
-        <div class="card">
-          <h3>Driver Info</h3>
-          <p>Name: Rajeev Bhatia</p>
-          <p>Car: Swift Dzire</p>
-          <p>Capacity: 4</p>
-          <p>Health: ✅</p>
-          <p>Late Reports: 1</p>
-        </div>
-        <div class="card">
-          <h3>Pool Allocation</h3>
-          <p>Drag & Drop UI will go here (backend required)</p>
-        </div>
-      </div>
+    <main class="main">
+      <div class="columns" id="columnsContainer"></div>
     </main>
   </div>
 
+  <div class="popup" id="studentPopup">
+    <span class="close-btn" onclick="closePopup()">×</span>
+    <h3>Students</h3>
+    <div id="popupStudentList"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
   <script>
-    new Chart(document.getElementById("attendanceChart"), {
-      type: "pie",
-      data: {
-        labels: ["Present", "Absent"],
-        datasets: [{
-          data: [85, 15],
-          backgroundColor: ["#00cec9", "#dfe6e9"]
-        }]
+    const socket = io({ query: { userId: "<%= user._id %>" } });
+
+    const driverPalette = document.getElementById('driverPalette');
+    const columnsContainer = document.getElementById('columnsContainer');
+    const studentPopup = document.getElementById('studentPopup');
+    const popupStudentList = document.getElementById('popupStudentList');
+
+    let allStudents = [];
+    let allDrivers = [];
+    let allBookings = [];
+
+    async function fetchData() {
+      const response = await fetch('/api/dashboard-data');
+      const data = await response.json();
+      allStudents = data.students;
+      allDrivers = data.drivers;
+      allBookings = data.bookings;
+      render();
+    }
+
+    function render() {
+      renderActiveDrivers();
+      renderAllUserLists();
+      renderPools();
+    }
+
+    function renderAllUserLists() {
+      const studentListContainer = document.getElementById('studentListContainer');
+      const driverListContainer = document.getElementById('driverListContainer');
+      studentListContainer.innerHTML = allStudents.map(s => renderUser(s)).join('');
+      driverListContainer.innerHTML = allDrivers.map(d => renderUser(d)).join('');
+    }
+
+    function renderUser(user) {
+        const statusColor = user.isActive ? 'var(--accent)' : 'var(--danger)';
+        return `<div class="user-item" data-user-id="${user._id}">
+                    <span style="color:${statusColor}">●</span> ${user.name}
+                </div>`;
+    }
+
+    function renderActiveDrivers() {
+      driverPalette.innerHTML = '';
+      allDrivers.filter(d => d.isActive).forEach(d => {
+        const div = document.createElement('div');
+        div.className = 'pool'; // Re-using pool style for a consistent look
+        div.style.cursor = 'grab';
+        div.dataset.id = d._id;
+        div.draggable = true;
+        div.innerHTML = `<strong>${d.name}</strong> (Cap: ${d.capacity})`;
+        div.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'driver', driverId: d._id }));
+        });
+        driverPalette.appendChild(div);
+      });
+    }
+
+    function renderPools() {
+      columnsContainer.innerHTML = '';
+      ['leaving', 'coming'].forEach(dir => {
+        const col = document.createElement('div');
+        col.className = 'column';
+        const title = document.createElement('h2');
+        title.className = 'col-title';
+        title.textContent = dir.charAt(0).toUpperCase() + dir.slice(1);
+        col.appendChild(title);
+
+        const bookingsInDir = allBookings.filter(b => b.direction === dir);
+        const pools = {}; // Group by time and location
+
+        bookingsInDir.forEach(b => {
+          const key = `${b.time}#${b.location || 'Unknown'}`;
+          if (!pools[key]) {
+            pools[key] = { time: b.time, location: b.location || 'Unknown', students: [] };
+          }
+          const student = allStudents.find(s => s._id === b.studentId);
+          if (student) pools[key].students.push(student);
+        });
+
+        for (const key in pools) {
+          const poolData = pools[key];
+          const poolEl = document.createElement('div');
+          poolEl.className = 'pool';
+          poolEl.dataset.time = poolData.time;
+          poolEl.dataset.location = poolData.location;
+          poolEl.innerHTML = `
+            <div class="header">
+              <div class="left">
+                <strong>${poolData.time} • ${poolData.location}</strong>
+                <div class="counts">
+                  Drivers: <span class="driversCount">0</span> •
+                  Students: <span class="studentsCount">${poolData.students.length}</span> •
+                  Cap: <span class="capInfo">0</span>
+                </div>
+              </div>
+            </div>
+            <div class="driver-avatars"></div>`;
+
+          poolEl.addEventListener('click', () => showStudentPopup(poolData.students));
+          poolEl.addEventListener('dragover', e => { e.preventDefault(); poolEl.style.outline = '2px dashed var(--accent)'; });
+          poolEl.addEventListener('dragleave', () => { poolEl.style.outline = 'none'; });
+          poolEl.addEventListener('drop', handleDrop);
+
+          col.appendChild(poolEl);
+        }
+        columnsContainer.appendChild(col);
+      });
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      e.currentTarget.style.outline = 'none';
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+      if (data.type === 'driver') {
+        const poolEl = e.currentTarget;
+        const { time, location } = poolEl.dataset;
+        fetch('/api/pools/assign-driver', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ driverId: data.driverId, time, location })
+        }).then(res => res.json()).then(data => {
+            if(data.success) {
+                // we can optionally update the UI immediately
+                // or wait for the websocket event for consistency
+                console.log('Driver assigned successfully');
+            } else {
+                alert('Failed to assign driver.');
+            }
+        });
+      }
+    }
+
+    function showStudentPopup(students) {
+      popupStudentList.innerHTML = '';
+      students.forEach(s => {
+        const div = document.createElement('div');
+        div.className = 'student-item';
+        div.innerHTML = `<span>${s.name}</span><div>
+            <button onclick="alert('Calling ${s.name}...')">Call</button>
+            <button onclick="alert('Notifying ${s.name}...')">Notify</button>
+        </div>`;
+        popupStudentList.appendChild(div);
+      });
+      studentPopup.style.display = 'block';
+    }
+
+    function closePopup() { studentPopup.style.display = 'none'; }
+
+    socket.on('new-booking', ({ booking, student }) => {
+        allBookings.push(booking);
+        // Avoid duplicating student if they already exist
+        if (!allStudents.find(s => s._id === student._id)) {
+            allStudents.push(student);
+        }
+        renderPools();
+    });
+
+    socket.on('user-status-change', ({ userId, isActive }) => {
+      const user = allStudents.find(u => u._id === userId) || allDrivers.find(u => u._id === userId);
+      if (user) {
+        user.isActive = isActive;
+        render(); // Re-render everything to reflect the status change
       }
     });
 
-    new Chart(document.getElementById("lateStudentChart"), {
-      type: "bar",
-      data: {
-        labels: ["Jan", "Feb", "Mar", "Apr"],
-        datasets: [{
-          label: "Late",
-          data: [3, 5, 2, 6],
-          backgroundColor: "#0984e3"
-        }]
-      },
-      options: {
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: "#333" } },
-          y: { ticks: { color: "#333" } }
-        }
-      }
+    socket.on('pool-updated', ({ time, location, driverId, assignedStudentIds }) => {
+        const driver = allDrivers.find(d => d._id === driverId);
+        if (!driver) return;
+
+        // Find the specific pool element in the DOM
+        const poolEl = document.querySelector(`.pool[data-time='${time}'][data-location='${location}']`);
+        if (!poolEl) return;
+
+        // Update the driver avatars in the pool
+        const avatarEl = document.createElement('img');
+        avatarEl.src = `https://i.pravatar.cc/150?u=${driverId}`; // Using a placeholder avatar
+        avatarEl.className = 'avatar-xs';
+        avatarEl.title = driver.name;
+        poolEl.querySelector('.driver-avatars').appendChild(avatarEl);
+
+        // Update counts
+        const driversCountEl = poolEl.querySelector('.driversCount');
+        driversCountEl.textContent = parseInt(driversCountEl.textContent) + 1;
+
+        const capInfoEl = poolEl.querySelector('.capInfo');
+        capInfoEl.textContent = parseInt(capInfoEl.textContent) + driver.capacity;
+
+        // Mark bookings as assigned so they are not re-rendered in a new pool
+        assignedStudentIds.forEach(studentId => {
+            const booking = allBookings.find(b => b.studentId === studentId && b.time === time && b.location === location);
+            if (booking) booking.status = 'assigned';
+        });
+
+        // Re-render pools to remove assigned students from the "pending" view
+        renderPools();
     });
+
+    fetchData();
   </script>
 </body>
 </html>
