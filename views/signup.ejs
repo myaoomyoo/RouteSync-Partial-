@@ -17,11 +17,20 @@
         <input type="password" name="password" placeholder="Password" required />
 
         <!-- Add role selection -->
-        <select name="role" required>
+        <select name="role" id="roleSelect" required>
           <option value="student">Student</option>
           <option value="driver">Driver</option>
           <option value="operator">Operator</option>
         </select>
+
+        <div id="studentFields" style="display:none;">
+          <input type="text" name="location" placeholder="Your Location (e.g., Malviya Nagar)" />
+        </div>
+
+        <div id="driverFields" style="display:none;">
+          <input type="text" name="carName" placeholder="Car Name (e.g., Swift Dzire)" />
+          <input type="number" name="capacity" placeholder="Car Capacity" />
+        </div>
 
         <button type="submit" class="btn primary full-width">Sign Up</button>
       </form>
@@ -36,5 +45,20 @@
       <p class="login-link">Already have an account? <a href="/login">Log in</a></p> <!-- Corrected link -->
     </div>
   </div>
+
+  <script>
+    const roleSelect = document.getElementById('roleSelect');
+    const studentFields = document.getElementById('studentFields');
+    const driverFields = document.getElementById('driverFields');
+
+    function toggleFields() {
+      studentFields.style.display = roleSelect.value === 'student' ? 'block' : 'none';
+      driverFields.style.display = roleSelect.value === 'driver' ? 'block' : 'none';
+    }
+
+    roleSelect.addEventListener('change', toggleFields);
+    // Initial check
+    toggleFields();
+  </script>
 </body>
 </html>

@@ -5,110 +5,121 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Student Dashboard - RouteSync</title>
   <link rel="stylesheet" href="/style.css"/>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="container">
-    <aside class="sidebar">
-      <div class="profile">
-        <div class="avatar"></div>
-        <h2><%= user.name %></h2>
-        <p><%= user.email %></p>
-      </div>
-      <nav>
-        <a href="#" class="active">Dashboard</a>
-        <a href="#">Trips</a>
-        <a href="#">Payments</a>
-        <a href="/logout" class="logout-link">Logout</a>
-      </nav>
+  <div class="app">
+    <header>
+      <h1>RouteSync — Student Dashboard</h1>
+      <button id="bookRideBtn" style="background:var(--accent);color:#000;border:0;padding:8px 12px;border-radius:8px;cursor:pointer;">+ Book a Ride</button>
+    </header>
+
+    <aside class="palette">
+      <h3>Your Profile</h3>
+      <p>Name: <%= user.name %></p>
+      <p>Email: <%= user.email %></p>
+      <a href="/logout">Logout</a>
     </aside>
 
-    <main class="main-content">
-      <h1>Welcome, <%= user.name %>!</h1>
-
-      <div class="cards">
-        <div class="card">
-          <h3>Travel History (Past 7 days)</h3>
-          <canvas id="historyChart"></canvas>
-        </div>
-        <div class="card">
-          <h3>Attendance Stats</h3>
-          <canvas id="attendancePie"></canvas>
-        </div>
-      </div>
-
-      <div class="card large">
-        <h3>Today's Trip Info</h3>
-        <p>Driver: <strong>Sunil Sharma</strong></p>
-        <p>Car: Hyundai i10</p>
-        <p>Pickup Time: 8:10 AM</p>
-        <p>Drop Time: 3:10 PM</p>
-        <p><a href="tel:+919911223344">📞 Call Driver</a></p>
-        <p>
-          Rate Driver:
-          ⭐⭐⭐⭐⭐
-        </p>
-      </div>
-
-      <div class="cards">
-        <div class="card">
-          <h3>Fee Payment</h3>
-          <p>Status: <strong>Due</strong></p>
-          <p>Plan: <strong>6 Months</strong></p>
-          <button>Pay Now</button>
-        </div>
-        <div class="card">
-          <h3>Emergency Protocol</h3>
-          <button style="background-color:#d63031; color:white; padding: 0.5rem 1rem; border:none; border-radius:5px;">Send Emergency Report</button>
-        </div>
+    <main class="main">
+      <h2>Today's Trip</h2>
+      <div id="tripInfo">
+        <!-- Trip details will be populated here -->
       </div>
     </main>
   </div>
 
-  <script>
-    fetch('/api/student/attendance')
-      .then(res => res.json())
-      .then(({ present, late, absent }) => {
-        new Chart(document.getElementById("attendancePie"), {
-          type: "pie",
-          data: {
-            labels: ["Present", "Late", "Absent"],
-            datasets: [{
-              data: [present, late, absent],
-              backgroundColor: ["#00b894", "#fdcb6e", "#d63031"]
-            }]
-          }
-        });
-      });
-  </script>
-  
-  
-  <script>
-    // Only ONE historyChart initialization, using real data
-    fetch('/api/student/travel-history')
-      .then(res => res.json())
-      .then(({ data }) => {
-        new Chart(document.getElementById("historyChart"), {
-          type: "line",
-          data: {
-            labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-            datasets: [{
-              label: "Trips",
-              data,
-              borderColor: "#6c5ce7",
-              backgroundColor: "rgba(108, 92, 231, 0.2)",
-              fill: true
-            }]
-          },
-          options: {
-            scales: {
-              y: { beginAtZero: true }
-            }
-          }
-        });
-      });
-  </script>
-  
+  <div class="popup" id="bookingPopup" style="display:none;">
+    <span class="close-btn" onclick="closeBookingPopup()">×</span>
+    <h3>Book a Ride</h3>
+    <form id="bookingForm">
+      <select name="direction" required>
+        <option value="coming">Coming to Campus</option>
+        <option value="leaving">Leaving Campus</option>
+      </select>
+      <select name="time" required>
+        <!-- Time slots will be populated here -->
+      </select>
+      <button type="submit">Book Now</button>
+    </form>
+  </div>
 
+  <div class="popup" id="notificationPopup" style="display:none;">
+    <span class="close-btn" onclick="closeNotificationPopup()">×</span>
+    <h3>Driver Assigned!</h3>
+    <div id="driverDetails"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io({
+      query: { userId: "<%= user._id %>" }
+    });
+
+    const bookRideBtn = document.getElementById('bookRideBtn');
+    const bookingPopup = document.getElementById('bookingPopup');
+    const bookingForm = document.getElementById('bookingForm');
+    const directionSelect = bookingForm.querySelector('select[name="direction"]');
+    const timeSelect = bookingForm.querySelector('select[name="time"]');
+
+    function generateTimeSlots(startHour, endHour, intervalMinutes) {
+        const slots = [];
+        let currentTime = new Date();
+        currentTime.setHours(startHour, 0, 0, 0);
+
+        const endTime = new Date();
+        endTime.setHours(endHour, 0, 0, 0);
+
+        while (currentTime <= endTime) {
+            slots.push(currentTime.toTimeString().substring(0, 5));
+            currentTime.setMinutes(currentTime.getMinutes() + intervalMinutes);
+        }
+        return slots;
+    }
+
+    function populateTimeSlots() {
+      const direction = directionSelect.value;
+      const times = direction === 'coming'
+        ? generateTimeSlots(9, 15, 90)
+        : generateTimeSlots(12, 18, 90);
+      timeSelect.innerHTML = times.map(t => `<option value="${t}">${t}</option>`).join('');
+    }
+
+    directionSelect.addEventListener('change', populateTimeSlots);
+    bookRideBtn.addEventListener('click', () => bookingPopup.style.display = 'block');
+    function closeBookingPopup() { bookingPopup.style.display = 'none'; }
+
+    bookingForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const direction = directionSelect.value;
+      const time = timeSelect.value;
+      const response = await fetch('/api/bookings/new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direction, time })
+      });
+      if (response.ok) {
+        alert('Booking successful!');
+        closeBookingPopup();
+      } else {
+        alert('Booking failed.');
+      }
+    });
+
+    function closeNotificationPopup() { document.getElementById('notificationPopup').style.display = 'none'; }
+
+    socket.on('driver-assigned', (data) => {
+      const { driver, time } = data;
+      const driverDetails = document.getElementById('driverDetails');
+      driverDetails.innerHTML = `
+        <p>Your driver for your ${time} trip is on the way!</p>
+        <p><strong>Driver:</strong> ${driver.name}</p>
+        <p><strong>Vehicle:</strong> ${driver.carName}</p>
+        <button onclick="alert('Calling ${driver.name}...')">Call</button>
+      `;
+      document.getElementById('notificationPopup').style.display = 'block';
+    });
+
+    populateTimeSlots(); // Initial population
+  </script>
 </body>
 </html>
